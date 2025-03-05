@@ -67,7 +67,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Install Hadolint (check Dockerfile)
         run: |
@@ -134,7 +134,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Run calculate_pi.py
         id: run_pi
@@ -174,7 +174,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
@@ -281,7 +281,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Install dependencies
         run: |
@@ -406,7 +406,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Install Hadolint (check Dockerfile)
         run: |
@@ -516,7 +516,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
@@ -702,7 +702,7 @@ jobs:
       - name: Set up Python
         uses: getsentry/action-setup-venv@v2.1.1
         with:
-          python-version: "3.12.3"
+          python-version: "3.12.9"
 
       - name: Install dependencies
         run: |
