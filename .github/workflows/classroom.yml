@@ -60,8 +60,10 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
-            docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -a -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -a -q)
+            fi
     
       - name: Checkout code
         uses: actions/checkout@v3
@@ -173,8 +175,10 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
-            docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -a -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -a -q)
+            fi
     
       - name: Checkout code
         uses: actions/checkout@v3
@@ -192,7 +196,7 @@ jobs:
       - name: Start SonarQube Service
         working-directory: ${{ github.workspace }}
         run: |
-          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up -d sonarqube --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up -d sonarqube
           docker update --memory=2g --memory-swap=2g $(docker ps --format "{{.Names}}" | grep sonarqube)
 
       - name: Wait for SonarQube to be Ready
@@ -223,7 +227,7 @@ jobs:
             exit 1
           fi
           echo "Running SonarScanner..."
-          docker-compose -f ToolsHW/docker-compose.yml up sonar-scanner --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up sonar-scanner
       - name: Wait for SonarQube to finish analysis
         run: |
           echo "Waiting for SonarQube analysis to complete..."
@@ -264,8 +268,8 @@ jobs:
               EXTRA_SCORE=$((EXTRA_SCORE + 1))
             fi
           done
-          
-          docker-compose -p sonarqube_${{ github.event.repository.name }} -f -v ToolsHW/docker-compose.yml down -d sonarqube --force-recreate || true
+
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml down -v || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
@@ -420,8 +424,10 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
-            docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -a -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -a -q)
+            fi
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -536,8 +542,10 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
-            docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -a -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -a -q)
+            fi
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -555,7 +563,7 @@ jobs:
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube
           docker update --memory=4g --memory-swap=4g $(docker ps --format "{{.Names}}" | grep sonarqube)
           sleep 30
           docker exec --user root $(docker ps --format "{{.Names}}" | grep sonarqube) bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
@@ -594,7 +602,7 @@ jobs:
             pylint --output-format=json **/*.py > reports/pylint-report.json || true &&
             flake8 --format=json > reports/flake8-report.json || true
           "
-          docker-compose up -d sonar-scanner --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonar-scanner
           
           STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
           if [[ "$STATUS" != "UP" ]]; then
@@ -606,7 +614,7 @@ jobs:
           export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
           
           echo "Running SonarScanner for DarkMaze Backend..."
-          docker-compose up sonar-scanner --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} up sonar-scanner
 
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
