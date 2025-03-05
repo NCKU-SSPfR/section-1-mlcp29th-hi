@@ -171,7 +171,6 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            docker rm -f sonarqube
     
       - name: Checkout code
         uses: actions/checkout@v3
@@ -262,7 +261,7 @@ jobs:
             fi
           done
           
-          docker-compose -f -v ToolsHW/docker-compose.yml down || true
+          docker-compose -f -v ToolsHW/docker-compose.yml down -d sonarqube || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
@@ -350,6 +349,7 @@ jobs:
 
       - name: Get all commit messages
         run: |
+          git config --global --add safe.directory ${{ github.workspace }}
           COMMITS=$(git log --pretty=format:"%s")
           echo "COMMITS<<EOF" >> $GITHUB_ENV
           echo "$COMMITS" >> $GITHUB_ENV
