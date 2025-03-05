@@ -91,7 +91,7 @@ jobs:
         run: docker-compose -f DockerHW/docker-compose.yml build || true
 
       - name: Start Docker containers
-        run: docker-compose -f DockerHW/docker-compose.yml up -d --force-recreate || true
+        run: docker-compose -f DockerHW/docker-compose.yml up -d || true
 
       - name: Verify service on port 5000
         id: healthcheck
@@ -197,7 +197,7 @@ jobs:
         working-directory: ${{ github.workspace }}
         run: |
           docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up -d sonarqube
-          docker update --memory=2g --memory-swap=2g $(docker ps --format "{{.Names}}" | grep sonarqube)
+          docker update --memory=2g --memory-swap=2g $(docker ps -aqf "name=sonarqube")
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -268,7 +268,7 @@ jobs:
               EXTRA_SCORE=$((EXTRA_SCORE + 1))
             fi
           done
-
+          
           docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml down -v || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
@@ -456,7 +456,7 @@ jobs:
         run: docker-compose -f DarkMaze/docker-compose.yml build || true
 
       - name: Start Docker containers
-        run: docker-compose -f DarkMaze/docker-compose.yml up -d --force-recreate || true
+        run: docker-compose -f DarkMaze/docker-compose.yml up -d || true
 
       - name: Verify frontend service on port 8088
         id: healthcheck_frontend
@@ -564,11 +564,11 @@ jobs:
         working-directory: DarkMaze
         run: |
           docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube
-          docker update --memory=4g --memory-swap=4g $(docker ps --format "{{.Names}}" | grep sonarqube)
+          docker update --memory=4g --memory-swap=4g $(docker ps -aqf "name=sonarqube")
           sleep 30
-          docker exec --user root $(docker ps --format "{{.Names}}" | grep sonarqube) bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
-          docker exec $(docker ps --format "{{.Names}}" | grep sonarqube) bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
-          docker restart $(docker ps --format "{{.Names}}" | grep sonarqube)
+          docker exec --user root $(docker ps -aqf "name=sonarqube") bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec $(docker ps -aqf "name=sonarqube") bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
+          docker restart $(docker ps -aqf "name=sonarqube")
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -618,7 +618,7 @@ jobs:
 
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
-          docker logs $(docker ps --format "{{.Names}}" | grep sonarqube) --tail 50
+          docker logs $(docker ps -aqf "name=sonarqube") --tail 50
           echo "------------------------------------------"
 
       - name: Ensure StrictQualityGate Exists
