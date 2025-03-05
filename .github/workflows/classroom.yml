@@ -20,8 +20,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
             
       - name: Checkout code
@@ -57,8 +57,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
     
       - name: Checkout code
@@ -103,7 +103,11 @@ jobs:
           echo "healthy=false" >> "$GITHUB_OUTPUT"
 
       - name: Stop Docker containers
-        run: docker-compose -f DockerHW/docker-compose.yml down || true
+        run: |
+          docker-compose -f -v DockerHW/docker-compose.yml down || true
+          sudo docker volume prune -f
+          sudo docker system prune -a --volumes -f
+          sudo docker image prune -a -f
 
       - name: Assign DockerHW score
         id: dockerhw
@@ -124,8 +128,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
     
       - name: Checkout code
@@ -164,9 +168,10 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
+            docker rm -f sonarqube
     
       - name: Checkout code
         uses: actions/checkout@v3
@@ -256,6 +261,11 @@ jobs:
               EXTRA_SCORE=$((EXTRA_SCORE + 1))
             fi
           done
+          
+          docker-compose -f -v ToolsHW/docker-compose.yml down || true
+          sudo docker volume prune -f
+          sudo docker system prune -a --volumes -f
+          sudo docker image prune -a -f
 
           SCORE=$((SCORE + EXTRA_SCORE))
           echo "ToolsHW final score: $SCORE"
@@ -271,8 +281,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
     
       - name: Checkout code
@@ -328,6 +338,13 @@ jobs:
     outputs:
       commit_message_score: ${{ steps.calculate_accuracy.outputs.commit_message_score }}
     steps:
+      - name: Cleanup build folder
+        run: |
+            ls -la ./
+            rm -rf ./* || true
+            rm -rf ./.??* || true
+            ls -la ./
+    
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -396,8 +413,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
 
       - name: Checkout code
@@ -460,7 +477,11 @@ jobs:
           echo "::set-output name=healthy::false"
 
       - name: Stop Docker containers
-        run: docker-compose -f DarkMaze/docker-compose.yml down || true
+        run: |
+          docker-compose -f DarkMaze/docker-compose.yml down || true
+          sudo docker volume prune -f
+          sudo docker system prune -a --volumes -f
+          sudo docker image prune -a -f
 
       - name: Assign DarkMaze Docker score
         id: DarkMaze-docker
@@ -506,8 +527,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
 
       - name: Checkout code
@@ -660,7 +681,10 @@ jobs:
       - name: Stop DarkMaze Backend Containers
         working-directory: DarkMaze/backend
         run: |
-          docker-compose down
+          docker-compose down -v
+          sudo docker volume prune -f
+          sudo docker system prune -a --volumes -f
+          sudo docker image prune -a -f
         
   check-darkmaze-testinghw:
     runs-on: [self-hosted]
@@ -692,8 +716,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
 
       - name: Checkout code
@@ -784,8 +808,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            # Delete everything except _temp/
-            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
+            rm -rf ./* || true
+            rm -rf ./.??* || true
             ls -la ./
     
       - name: Checkout code
