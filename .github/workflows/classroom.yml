@@ -17,12 +17,6 @@ jobs:
       git_score: ${{ steps.githw.outputs.git_score }}
       student_id: ${{ steps.githw.outputs.student_id }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
-
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -46,19 +40,19 @@ jobs:
           echo "git_score=$SCORE" >> "$GITHUB_OUTPUT"
           echo "student_id=$STUDENT_ID" >> "$GITHUB_OUTPUT"
 
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
+
   check-dockerhw:
     runs-on: [self-hosted]
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
       docker_score: ${{ steps.dockerhw.outputs.docker_score }}
-    steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
-    
+    steps:    
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -115,6 +109,12 @@ jobs:
           else
             echo "docker_score=0" >> "$GITHUB_OUTPUT"
           fi
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
 
   check-cleancodehw:
     runs-on: [self-hosted]
@@ -123,12 +123,6 @@ jobs:
     outputs:
       cleancode_score: ${{ steps.cleancode.outputs.cleancode_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
-    
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -154,7 +148,13 @@ jobs:
           SCORE=$(python3 .github/judge/clean_code_HW_judge.py)
           SCORE_NUM=$((SCORE + 0))
           echo "cleancode_score=$SCORE_NUM" >> "$GITHUB_OUTPUT"
-
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
+            
   check-toolshw:
     runs-on: [self-hosted]
     if: github.actor != 'github-classroom[bot]'
@@ -162,11 +162,8 @@ jobs:
     outputs:
       tools_score: ${{ steps.toolshw.outputs.tools_score }}
     steps:
-      - name: Cleanup build folder
+      - name: Cleanup SonarQube remainder
         run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
             docker rm -f sonarqube
     
       - name: Checkout code
@@ -266,7 +263,13 @@ jobs:
           SCORE=$((SCORE + EXTRA_SCORE))
           echo "ToolsHW final score: $SCORE"
           echo "tools_score=$SCORE" >> "$GITHUB_OUTPUT"
-
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
+            
   check-unittesthw:
     runs-on: [self-hosted]
     if: github.actor != 'github-classroom[bot]'
@@ -274,12 +277,6 @@ jobs:
     outputs:
       unittests_score: ${{ steps.assign_score.outputs.unittests_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
-    
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -326,6 +323,12 @@ jobs:
           
           TOTAL=$((FIZZBUZZ_BASIC_SCORE + FIZZBUZZ_CLASS_SCORE + REGEXMATCHING_SCORE))
           echo "unittests_score=$TOTAL" >> "$GITHUB_OUTPUT"
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
 
   check-commit-message:
     runs-on: [self-hosted]
@@ -333,12 +336,6 @@ jobs:
     outputs:
       commit_message_score: ${{ steps.calculate_accuracy.outputs.commit_message_score }}
     steps:
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
-    
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -378,6 +375,12 @@ jobs:
             echo "commit_message_score=3" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
+
   check-darkmaze-dockerhw:
     runs-on: [self-hosted]
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
@@ -403,12 +406,6 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -490,7 +487,13 @@ jobs:
             echo "darkmaze_docker_score=0" >> $GITHUB_ENV
             echo "darkmaze_docker_score=0" >> $GITHUB_OUTPUT
           fi
-
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
+            
   check-darkmaze-tools:
     runs-on: [self-hosted]
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
@@ -516,12 +519,6 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -674,10 +671,17 @@ jobs:
         working-directory: DarkMaze/backend
         run: |
           docker-compose down -v
+          docker-compose down -v -d sonarqube
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
-        
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
+            
   check-darkmaze-testinghw:
     runs-on: [self-hosted]
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
@@ -704,12 +708,6 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
-      - name: Cleanup build folder
-        run: |
-            ls -la ../.././
-            rm -rf ../../section-*/ || true
-            ls -la ../.././
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -791,17 +789,17 @@ jobs:
           TOTAL=$((GAME_OVER_SCORE + NO_BACKEND_SCORE + MOCK_BACKEND_SCORE + SOLVE_MAZE_SCORE))
           echo "darkmaze_testing_score=$TOTAL" >> "$GITHUB_OUTPUT"
 
-  calculate-score:
-    runs-on: [self-hosted]
-    needs: [check-githw, check-dockerhw, check-cleancodehw, check-toolshw, check-unittesthw, check-commit-message, check-darkmaze-testinghw, check-darkmaze-dockerhw, check-darkmaze-tools]
-    permissions: write-all
-    steps:
       - name: Cleanup build folder
         run: |
             ls -la ../.././
             rm -rf ../../section-*/ || true
             ls -la ../.././
-    
+
+  calculate-score:
+    runs-on: [self-hosted]
+    needs: [check-githw, check-dockerhw, check-cleancodehw, check-toolshw, check-unittesthw, check-commit-message, check-darkmaze-testinghw, check-darkmaze-dockerhw, check-darkmaze-tools]
+    permissions: write-all
+    steps:    
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -945,3 +943,9 @@ jobs:
         with:
           points: ${{ steps.score_report.outputs.total_score }}
           available-points: ${{ steps.score_report.outputs.max_total_score}}
+          
+      - name: Cleanup build folder
+        run: |
+            ls -la ../.././
+            rm -rf ../../section-*/ || true
+            ls -la ../.././
