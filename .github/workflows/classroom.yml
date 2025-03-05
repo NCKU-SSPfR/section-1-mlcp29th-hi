@@ -566,7 +566,7 @@ jobs:
           docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube
           docker update --memory=4g --memory-swap=4g $(docker ps -aqf "name=sonarqube")
           sleep 30
-          docker exec --user root $(docker ps -aqf "name=sonarqube") bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec $(docker ps -aqf "name=sonarqube") --user root bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
           docker exec $(docker ps -aqf "name=sonarqube") bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
           docker restart $(docker ps -aqf "name=sonarqube")
 
