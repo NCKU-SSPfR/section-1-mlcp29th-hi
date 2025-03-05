@@ -87,7 +87,7 @@ jobs:
         run: docker-compose -f DockerHW/docker-compose.yml build || true
 
       - name: Start Docker containers
-        run: docker-compose -f DockerHW/docker-compose.yml up -d || true
+        run: docker-compose -f DockerHW/docker-compose.yml up -d --force-recreate || true
 
       - name: Verify service on port 5000
         id: healthcheck
@@ -188,8 +188,8 @@ jobs:
       - name: Start SonarQube Service
         working-directory: ${{ github.workspace }}
         run: |
-          docker-compose -f ToolsHW/docker-compose.yml up -d sonarqube
-          docker update --memory=2g --memory-swap=2g sonarqube
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up -d sonarqube --force-recreate
+          docker update --memory=2g --memory-swap=2g $(docker ps --format "{{.Names}}" | grep sonarqube)
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -219,7 +219,7 @@ jobs:
             exit 1
           fi
           echo "Running SonarScanner..."
-          docker-compose -f ToolsHW/docker-compose.yml up sonar-scanner
+          docker-compose -f ToolsHW/docker-compose.yml up sonar-scanner --force-recreate
       - name: Wait for SonarQube to finish analysis
         run: |
           echo "Waiting for SonarQube analysis to complete..."
@@ -261,7 +261,7 @@ jobs:
             fi
           done
           
-          docker-compose -f -v ToolsHW/docker-compose.yml down -d sonarqube || true
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f -v ToolsHW/docker-compose.yml down -d sonarqube --force-recreate || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
@@ -444,7 +444,7 @@ jobs:
         run: docker-compose -f DarkMaze/docker-compose.yml build || true
 
       - name: Start Docker containers
-        run: docker-compose -f DarkMaze/docker-compose.yml up -d || true
+        run: docker-compose -f DarkMaze/docker-compose.yml up -d --force-recreate || true
 
       - name: Verify frontend service on port 8088
         id: healthcheck_frontend
@@ -547,12 +547,12 @@ jobs:
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          docker-compose up -d sonarqube
-          docker update --memory=4g --memory-swap=4g sonarqube
+          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube --force-recreate
+          docker update --memory=4g --memory-swap=4g $(docker ps --format "{{.Names}}" | grep sonarqube)
           sleep 30
-          docker exec --user root sonarqube bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
-          docker exec sonarqube bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
-          docker restart sonarqube
+          docker exec --user root $(docker ps --format "{{.Names}}" | grep sonarqube) bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec $(docker ps --format "{{.Names}}" | grep sonarqube) bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
+          docker restart $(docker ps --format "{{.Names}}" | grep sonarqube)
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -586,7 +586,7 @@ jobs:
             pylint --output-format=json **/*.py > reports/pylint-report.json || true &&
             flake8 --format=json > reports/flake8-report.json || true
           "
-          docker-compose up -d sonar-scanner
+          docker-compose up -d sonar-scanner --force-recreate
           
           STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
           if [[ "$STATUS" != "UP" ]]; then
@@ -598,11 +598,11 @@ jobs:
           export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
           
           echo "Running SonarScanner for DarkMaze Backend..."
-          docker-compose up sonar-scanner
+          docker-compose up sonar-scanner --force-recreate
 
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
-          docker logs sonarqube --tail 50
+          docker logs $(docker ps --format "{{.Names}}" | grep sonarqube) --tail 50
           echo "------------------------------------------"
 
       - name: Ensure StrictQualityGate Exists
