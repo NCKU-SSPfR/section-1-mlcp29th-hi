@@ -60,6 +60,8 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
+            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
+            docker rm -f $(docker ps -a -q)
     
       - name: Checkout code
         uses: actions/checkout@v3
@@ -131,7 +133,7 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-    
+            
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -171,6 +173,8 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
+            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
+            docker rm -f $(docker ps -a -q)
     
       - name: Checkout code
         uses: actions/checkout@v3
@@ -416,6 +420,8 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
+            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
+            docker rm -f $(docker ps -a -q)
 
       - name: Checkout code
         uses: actions/checkout@v3
@@ -530,6 +536,8 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
+            kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q))
+            docker rm -f $(docker ps -a -q)
 
       - name: Checkout code
         uses: actions/checkout@v3
