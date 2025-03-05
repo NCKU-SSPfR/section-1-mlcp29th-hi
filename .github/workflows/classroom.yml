@@ -91,7 +91,7 @@ jobs:
         run: docker-compose -f DockerHW/docker-compose.yml build || true
 
       - name: Start Docker containers
-        run: docker-compose -f DockerHW/docker-compose.yml up -d || true
+        run: docker-compose -f DockerHW/docker-compose.yml up -d --force-recreate || true
 
       - name: Verify service on port 5000
         id: healthcheck
@@ -268,7 +268,7 @@ jobs:
               EXTRA_SCORE=$((EXTRA_SCORE + 1))
             fi
           done
-          
+
           docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml down -v || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
@@ -456,7 +456,7 @@ jobs:
         run: docker-compose -f DarkMaze/docker-compose.yml build || true
 
       - name: Start Docker containers
-        run: docker-compose -f DarkMaze/docker-compose.yml up -d || true
+        run: docker-compose -f DarkMaze/docker-compose.yml up -d --force-recreate || true
 
       - name: Verify frontend service on port 8088
         id: healthcheck_frontend
