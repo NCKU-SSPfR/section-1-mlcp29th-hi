@@ -20,8 +20,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
             
       - name: Checkout code
@@ -57,12 +57,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Install Hadolint (check Dockerfile)
         run: |
@@ -119,12 +124,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Run calculate_pi.py
         id: run_pi
@@ -154,12 +164,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
@@ -256,12 +271,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Install dependencies
         run: |
@@ -376,12 +396,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
 
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Install Hadolint (check Dockerfile)
         run: |
@@ -481,12 +506,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
 
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
@@ -662,12 +692,17 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
 
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: getsentry/action-setup-venv@v2.1.1
+        with:
+          python-version: "3.12.9"
 
       - name: Install dependencies
         run: |
@@ -749,8 +784,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
