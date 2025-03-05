@@ -12,7 +12,6 @@ services:
   
   sonarqube:
     image: sonarqube:lts-community
-    container_name: sonarqube
     ports:
       - "9000:9000"
     environment:
