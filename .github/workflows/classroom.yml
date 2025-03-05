@@ -188,8 +188,8 @@ jobs:
       - name: Start SonarQube Service
         working-directory: ${{ github.workspace }}
         run: |
-          docker-compose -f ToolsHW/docker-compose.yml up -d sonarqube --force-recreate
-          docker update --memory=2g --memory-swap=2g sonarqube
+          docker-compose -f ToolsHW/docker-compose.yml up -d sonarqube_${{ github.event.repository.name }} --force-recreate
+          docker update --memory=2g --memory-swap=2g sonarqube_${{ github.event.repository.name }}
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -261,7 +261,7 @@ jobs:
             fi
           done
           
-          docker-compose -f -v ToolsHW/docker-compose.yml down -d sonarqube --force-recreate || true
+          docker-compose -f -v ToolsHW/docker-compose.yml down -d sonarqube_${{ github.event.repository.name }} --force-recreate || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
@@ -547,12 +547,12 @@ jobs:
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          docker-compose up -d sonarqube --force-recreate
-          docker update --memory=4g --memory-swap=4g sonarqube
+          docker-compose up -d sonarqube_${{ github.event.repository.name }} --force-recreate
+          docker update --memory=4g --memory-swap=4g sonarqube_${{ github.event.repository.name }}
           sleep 30
-          docker exec --user root sonarqube bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
-          docker exec sonarqube bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
-          docker restart sonarqube
+          docker exec --user root sonarqube_${{ github.event.repository.name }} bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec sonarqube_${{ github.event.repository.name }} bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
+          docker restart sonarqube_${{ github.event.repository.name }}
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -602,7 +602,7 @@ jobs:
 
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
-          docker logs sonarqube --tail 50
+          docker logs sonarqube_${{ github.event.repository.name }} --tail 50
           echo "------------------------------------------"
 
       - name: Ensure StrictQualityGate Exists
