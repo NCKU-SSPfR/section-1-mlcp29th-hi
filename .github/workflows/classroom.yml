@@ -60,9 +60,9 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            if [ -n "$(docker ps -a -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -q)
             fi
     
       - name: Checkout code
@@ -175,9 +175,9 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            if [ -n "$(docker ps -a -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -q)
             fi
     
       - name: Checkout code
@@ -424,9 +424,9 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            if [ -n "$(docker ps -a -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -q)
             fi
 
       - name: Checkout code
@@ -542,9 +542,9 @@ jobs:
             rm -rf ./* || true
             rm -rf ./.??* || true
             ls -la ./
-            if [ -n "$(docker ps -a -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -a -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -a -q)
+            if [ -n "$(docker ps -q)" ]; then
+                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
+                sudo docker rm -f $(docker ps -q)
             fi
 
       - name: Checkout code
