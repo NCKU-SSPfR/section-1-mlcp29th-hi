@@ -20,8 +20,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
             
       - name: Checkout code
@@ -57,8 +57,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
@@ -124,8 +124,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
@@ -164,8 +164,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
@@ -271,8 +271,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
@@ -396,8 +396,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
 
       - name: Checkout code
@@ -506,8 +506,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
 
       - name: Checkout code
@@ -692,8 +692,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
 
       - name: Checkout code
@@ -784,8 +784,8 @@ jobs:
       - name: Cleanup build folder
         run: |
             ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
+            # Delete everything except _temp/
+            find . -mindepth 1 -not -name "_temp" -not -path "./_temp/*" -exec rm -rf {} +
             ls -la ./
     
       - name: Checkout code
