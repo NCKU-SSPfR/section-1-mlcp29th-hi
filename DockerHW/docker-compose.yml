@@ -5,7 +5,6 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
-    container_name: web
     ports:
       - 5000:5000
     command: ["python", "main.py"]
