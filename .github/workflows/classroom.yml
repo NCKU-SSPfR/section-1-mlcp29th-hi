@@ -188,7 +188,7 @@ jobs:
       - name: Start SonarQube Service
         working-directory: ${{ github.workspace }}
         run: |
-          docker-compose -f ToolsHW/docker-compose.yml up -p sonarqube_${{ github.event.repository.name }} -d sonarqube --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f ToolsHW/docker-compose.yml up -d sonarqube --force-recreate
           docker update --memory=2g --memory-swap=2g $(docker ps --format "{{.Names}}" | grep sonarqube)
 
       - name: Wait for SonarQube to be Ready
@@ -261,7 +261,7 @@ jobs:
             fi
           done
           
-          docker-compose -f -v ToolsHW/docker-compose.yml down -d sonarqube -p sonarqube_${{ github.event.repository.name }} --force-recreate || true
+          docker-compose -p sonarqube_${{ github.event.repository.name }} -f -v ToolsHW/docker-compose.yml down -d sonarqube --force-recreate || true
           sudo docker volume prune -f
           sudo docker system prune -a --volumes -f
           sudo docker image prune -a -f
@@ -547,7 +547,7 @@ jobs:
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          docker-compose up -d sonarqube -p sonarqube_${{ github.event.repository.name }} --force-recreate
+          docker-compose -p sonarqube_${{ github.event.repository.name }} up -d sonarqube --force-recreate
           docker update --memory=4g --memory-swap=4g $(docker ps --format "{{.Names}}" | grep sonarqube)
           sleep 30
           docker exec --user root $(docker ps --format "{{.Names}}" | grep sonarqube) bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
