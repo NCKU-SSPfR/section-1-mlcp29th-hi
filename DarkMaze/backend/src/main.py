@@ -25,7 +25,7 @@ class CookieManager:
     @staticmethod
     def create_cookie(name: str, value: str, days: int = 1):
         """Create cookie settings format."""
-        expires = datetime.utcnow() + timedelta(days=days)
+        expires = datetime.now() + timedelta(days=days)
         return {
             "name": name,
             "value": value,
