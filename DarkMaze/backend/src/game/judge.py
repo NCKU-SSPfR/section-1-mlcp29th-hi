@@ -3,7 +3,6 @@ import os
 import re
 import numpy as np
 
-
 def parse_map(map_string: str, map_size: tuple[int, int], reversal_nodes=None) -> np.ndarray:
     """Parses a given map string into a binary matrix representation."""
     if reversal_nodes is None:
@@ -28,7 +27,6 @@ def parse_map(map_string: str, map_size: tuple[int, int], reversal_nodes=None) -
 
     return maze_array
 
-
 def load_maze_from_json(maze_level_name: str) -> dict:
     """Loads a maze configuration from a JSON file."""
     file_path = os.path.join("src", "game", "maze_level", f"{maze_level_name}.json")
@@ -44,7 +42,6 @@ def load_maze_from_json(maze_level_name: str) -> dict:
         "map": parse_map(data.get("map", ""), tuple(data.get("map_size", [10, 10])), data.get("reversal_node", [])),
     }
 
-
 def hit_obstacle(position: tuple[int, int], maze_level_name: str) -> bool:
     """Checks if a given position in the maze is an obstacle (1) or free space (0)."""
     x, y = position
@@ -53,11 +50,9 @@ def hit_obstacle(position: tuple[int, int], maze_level_name: str) -> bool:
 
     return not (0 <= x < grid.shape[0] and 0 <= y < grid.shape[1]) or grid[y, x] == 1
 
-
 def game_over(health: int) -> bool:
     """Checks if the game is over based on the player's health."""
     return health in {0, 666}
-
 
 def arrive_at_destination(maze_level_name: str, current_position: tuple[int, int]) -> bool:
     """Checks if the player has arrived at the maze's destination."""
