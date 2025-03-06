@@ -163,7 +163,7 @@ jobs:
           echo "cleancode_score=$SCORE_NUM" >> "$GITHUB_OUTPUT"
 
   check-toolshw:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     if: github.actor != 'github-classroom[bot]'
     continue-on-error: true
     outputs:
@@ -514,7 +514,7 @@ jobs:
           fi
 
   check-darkmaze-tools:
-    runs-on: [self-hosted]
+    runs-on: ubuntu-latest
     needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
     continue-on-error: true
     outputs:
@@ -539,24 +539,8 @@ jobs:
             exit 1
           fi
 
-      - name: Cleanup build folder
-        run: |
-            ls -la ./
-            rm -rf ./* || true
-            rm -rf ./.??* || true
-            ls -la ./
-            if [ -n "$(docker ps -q)" ]; then
-                sudo kill -9 $(docker inspect --format '{{.State.Pid}}' $(docker ps -q) 2>/dev/null | grep -o '[0-9]*')
-                sudo docker rm -f $(docker ps -q)
-            fi
-
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: getsentry/action-setup-venv@v2.1.1
-        with:
-          python-version: "3.12.9"
 
       - name: Install Docker Compose
         run: |
@@ -566,13 +550,12 @@ jobs:
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} up -d sonarqube
-          docker update --memory=4g --memory-swap=4g $(docker ps -aqf "name=sonarqube")
+          docker-compose up -d sonarqube
+          docker update --memory=4g --memory-swap=4g sonarqube
           sleep 30
-          docker exec $(docker ps -aqf "name=sonarqube") --user root bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
-          docker exec $(docker ps -aqf "name=sonarqube") bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
-          docker restart $(docker ps -aqf "name=sonarqube")
+          docker exec --user root sonarqube bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec sonarqube bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
+          docker restart sonarqube
 
       - name: Wait for SonarQube to be Ready
         run: |
@@ -606,9 +589,7 @@ jobs:
             pylint --output-format=json **/*.py > reports/pylint-report.json || true &&
             flake8 --format=json > reports/flake8-report.json || true
           "
-
-          REPO_NAME=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-_')
-          docker-compose -p sonarqube_${REPO_NAME} up -d sonar-scanner
+          docker-compose up -d sonar-scanner
           
           STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
           if [[ "$STATUS" != "UP" ]]; then
@@ -620,11 +601,11 @@ jobs:
           export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
           
           echo "Running SonarScanner for DarkMaze Backend..."
-          docker-compose -p sonarqube_${REPO_NAME} up sonar-scanner
+          docker-compose up sonar-scanner
 
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
-          docker logs $(docker ps -aqf "name=sonarqube") --tail 50
+          docker logs sonarqube --tail 50
           echo "------------------------------------------"
 
       - name: Ensure StrictQualityGate Exists
@@ -703,10 +684,7 @@ jobs:
       - name: Stop DarkMaze Backend Containers
         working-directory: DarkMaze/backend
         run: |
-          docker-compose down -v
-          sudo docker volume prune -f
-          sudo docker system prune -a --volumes -f
-          sudo docker image prune -a -f
+          docker-compose down
         
   check-darkmaze-testinghw:
     runs-on: [self-hosted]
