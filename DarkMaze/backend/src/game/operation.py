@@ -1,5 +1,5 @@
-from ..database.operation import save_game_state
-from .judge import hit_obstacle, game_over, arrive_at_destination
+from src.database.operation import save_game_state
+from src.game.judge import hit_obstacle, game_over, arrive_at_destination
 
 
 def move_location(game_state: dict, direction: str) -> dict:
@@ -22,28 +22,39 @@ def move_location(game_state: dict, direction: str) -> dict:
         "right": (1, 0),
     }
 
-    # Compute new position
-    if direction in DIRECTIONS:
-        dx, dy = DIRECTIONS[direction]
-        new_x, new_y = x + dx, y + dy
+    if direction not in DIRECTIONS:
+        return game_state  # Invalid direction, no movement
 
-        # Ensure movement stays within bounds
-        if 0 <= new_x < width and 0 <= new_y < height:
-            new_position = [new_x, new_y]
+    dx, dy = DIRECTIONS[direction]
+    new_position = [x + dx, y + dy]
 
-            if hit_obstacle(new_position, game_state["current_level_name"]):
-                game_state["health"] -= 1  # Reduce health on obstacle hit
-            else:
-                if new_position not in game_state["path"]:
-                    game_state["path"].append(new_position)
+    if not is_within_bounds(new_position, width, height):
+        return game_state  # Out of bounds, no movement
 
-                game_state["current_position"] = new_position
+    if hit_obstacle(new_position, game_state["current_level_name"]):
+        game_state["health"] -= 1  # Reduce health on obstacle hit
+    else:
+        update_player_position(game_state, new_position)
 
-            # Check if the player has reached the destination
-            if arrive_at_destination(game_state["current_level_name"], game_state["current_position"]):
-                game_state["health"] = 666  # Mark game as won
+    if arrive_at_destination(game_state["current_level_name"], game_state["current_position"]):
+        game_state["health"] = 666  # Mark game as won
 
-    # Update game state in the database
+    save_game_state_to_db(game_state)  # Save the game state
+    return game_state
+
+# Helper function to check if the new position is within bounds
+def is_within_bounds(position, width, height) -> bool:
+    x, y = position
+    return 0 <= x < width and 0 <= y < height
+
+# Helper function to update the player's position
+def update_player_position(game_state: dict, new_position: list):
+    if new_position not in game_state["path"]:
+        game_state["path"].append(new_position)
+    game_state["current_position"] = new_position
+
+# Helper function to save the game state
+def save_game_state_to_db(game_state: dict):
     save_game_state(
         game_state["username"],
         game_state["current_level_name"],
@@ -52,5 +63,3 @@ def move_location(game_state: dict, direction: str) -> dict:
         game_state["path"],
         game_state["current_position"],
     )
-
-    return game_state
