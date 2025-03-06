@@ -538,7 +538,6 @@ jobs:
             echo "Not yet passed the first part."
             exit 1
           fi
-
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -546,7 +545,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y docker-compose
-
       - name: Start SonarQube Service for DarkMaze
         working-directory: DarkMaze
         run: |
@@ -556,7 +554,6 @@ jobs:
           docker exec --user root sonarqube bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
           docker exec sonarqube bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
           docker restart sonarqube
-
       - name: Wait for SonarQube to be Ready
         run: |
           echo "Waiting for SonarQube to start..."
@@ -570,14 +567,12 @@ jobs:
           done
           echo "SonarQube failed to start properly"
           exit 1
-
       - name: Generate SonarQube Token
         id: generate_token_darkmaze
         run: |
           SONAR_TOKEN=$(curl -s -u admin:admin -X POST "http://localhost:9000/api/user_tokens/generate?name=ci-token-darkmaze" | jq -r '.token')
           echo "Generated SONAR_TOKEN: $SONAR_TOKEN"
           echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
-
       - name: Run SonarScanner for DarkMaze
         working-directory: DarkMaze/backend
         run: |
@@ -596,24 +591,20 @@ jobs:
             echo "SonarQube is not ready, exiting..."
             exit 1
           fi
-
           export PYLINT_REPORT=$(cat $PWD/reports/pylint-report.json)
           export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
           
           echo "Running SonarScanner for DarkMaze Backend..."
           docker-compose up sonar-scanner
-
           echo "SonarQube status: $STATUS, still waiting..."
           echo "----- SonarQube Logs (last 50 lines) -----"
           docker logs sonarqube --tail 50
           echo "------------------------------------------"
-
       - name: Ensure StrictQualityGate Exists
         run: |
           curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/create?name=StrictQualityGate" || true
           curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/set_default?name=StrictQualityGate" || true
           curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/select?project=DarkMaze&gateName=StrictQualityGate" || true
-
       - name: Wait for SonarQube Analysis to Complete
         run: |
           echo "Waiting for SonarQube analysis to complete..."
@@ -630,7 +621,6 @@ jobs:
           done
           echo "SonarQube analysis did not finish in time."
           exit 1
-
       - name: Check SonarQube Quality Gate and Ratings for DarkMaze Tools
         id: darkmaze_tools_check
         run: |
