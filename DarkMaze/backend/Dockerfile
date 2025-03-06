@@ -1,5 +1,3 @@
-# TODO: Install the backend dependency package into the app folder inside the container.
-
 FROM python:3.11
 
 WORKDIR /app

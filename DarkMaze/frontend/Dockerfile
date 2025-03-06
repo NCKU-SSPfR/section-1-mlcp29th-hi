@@ -1,4 +1,3 @@
-# TODO: Install the frontend dependency package into the app folder inside the container.
 FROM python:3.11
 
 WORKDIR /app
