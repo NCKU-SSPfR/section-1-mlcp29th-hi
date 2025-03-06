@@ -1,38 +1,786 @@
 # Do not modify this file. IF VIOLATED, REGARDLESS OF THE NUMBER OF TIMES, THE ASSIGNMENT WILL AUTOMATICALLY RECEIVE A SCORE OF 0!
 
-def check_code_in_file(file_path):
-    score = 8
-    expected_lines = [
-        'y = random.uniform(-RADIUS, RADIUS)',
-        'if x**SQUARE_EXPONENT + y**SQUARE_EXPONENT <= RADIUS**SQUARE_EXPONENT:'
-    ]
-    
-    try:
-        with open(file_path, 'r') as file:
-            lines = file.readlines()
+name: Homework CI
 
-        line_checks = [any(line.strip() == expected for line in lines) for expected in expected_lines]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
-        pi_neapple_check = not any('pi_neapple' in line for line in lines)
+jobs:
+  check-githw:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    continue-on-error: true
+    outputs:
+      git_score: ${{ steps.githw.outputs.git_score }}
+      student_id: ${{ steps.githw.outputs.student_id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-        if all(line_checks):
-            pass
-        else:
-            for i, line_check in enumerate(line_checks):
-                if not line_check:
-                    score = score -3
+      - name: Check GitHW
+        id: githw
+        run: |
+          SCORE=0
+          STUDENT_ID=""
+          if [ -f "GitHW/studentID.md" ]; then
+            CONTENT=$(cat GitHW/studentID.md)
+            if [[ "$CONTENT" =~ ^Hello\ World\ ([A-Za-z][0-9]{8})$ ]]; then
+              STUDENT_ID=${BASH_REMATCH[1]}
+              echo "GitHW format is correct. Student ID: $STUDENT_ID"
+              SCORE=$((SCORE + 8))
+            else
+              echo "GitHW format is incorrect."
+            fi
+          else
+            echo "GitHW/studentID.md not found."
+          fi
+          echo "git_score=$SCORE" >> "$GITHUB_OUTPUT"
+          echo "student_id=$STUDENT_ID" >> "$GITHUB_OUTPUT"
+  check-dockerhw:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    continue-on-error: true
+    outputs:
+      docker_score: ${{ steps.dockerhw.outputs.docker_score }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-        if pi_neapple_check:
-            pass
-        else:
-            score = score -2
-        return score
-    
-    except FileNotFoundError:
-        return 0
-    except Exception as e:
-        return 0
+      - name: Install Hadolint (check Dockerfile)
+        run: |
+          wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x hadolint
+          ./hadolint ./DockerHW/Dockerfile || true
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+      - name: Check docker-compose.yml
+        run: docker-compose -f DockerHW/docker-compose.yml config || true
 
-file_path = "CleanCodeHW/calculate_pi.py"
-score = check_code_in_file(file_path)
-print(score)
+      - name: Build Docker image
+        run: docker-compose -f DockerHW/docker-compose.yml build || true
+
+      - name: Start Docker containers
+        run: docker-compose -f DockerHW/docker-compose.yml up -d || true
+
+      - name: Verify service on port 5000
+        id: healthcheck
+        run: |
+          for i in {1..5}; do
+            if curl -s http://localhost:5000 > /dev/null; then
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Waiting for service on port 5000..."
+            sleep 1
+          done
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+      - name: Stop Docker containers
+        run: docker-compose -f DockerHW/docker-compose.yml down || true
+
+      - name: Assign DockerHW score
+        id: dockerhw
+        run: |
+          if [[ "${{ steps.healthcheck.outputs.healthy }}" == "true" ]]; then
+            echo "docker_score=8" >> "$GITHUB_OUTPUT"
+          else
+            echo "docker_score=0" >> "$GITHUB_OUTPUT"
+          fi
+  check-cleancodehw:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    continue-on-error: true
+    outputs:
+      cleancode_score: ${{ steps.cleancode.outputs.cleancode_score }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run calculate_pi.py
+        id: run_pi
+        run: |
+          OUTPUT=$(python3 CleanCodeHW/calculate_pi.py)
+          echo "$OUTPUT"
+          if echo "$OUTPUT" | grep -q "Estimated value of pi is: 3.1"; then
+            echo "calculate_pi_success=true" >> "$GITHUB_ENV"
+          else
+            echo "calculate_pi_success=false" >> "$GITHUB_ENV"
+          fi
+      - name: Run clean_code_HW_judge.py
+        id: cleancode
+        if: env.calculate_pi_success == 'true'
+        run: |
+          SCORE=$(python3 .github/judge/clean_code_HW_judge.py)
+          SCORE_NUM=$((SCORE + 0))
+          echo "cleancode_score=$SCORE_NUM" >> "$GITHUB_OUTPUT"
+  check-toolshw:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    continue-on-error: true
+    outputs:
+      tools_score: ${{ steps.toolshw.outputs.tools_score }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+      - name: Start SonarQube Service
+        working-directory: ${{ github.workspace }}
+        run: |
+          docker-compose -f ToolsHW/docker-compose.yml up -d sonarqube
+          docker update --memory=2g --memory-swap=2g sonarqube
+      - name: Wait for SonarQube to be Ready
+        run: |
+          echo "Waiting for SonarQube to start..."
+          for i in {1..60}; do
+            STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
+            if [[ "$STATUS" == "UP" ]]; then
+              echo "SonarQube is fully ready!"
+              exit 0
+            fi
+            echo "SonarQube status: $STATUS, still waiting..."
+            sleep 10
+          done
+      - name: Generate SonarQube Token
+        id: generate_token
+        run: |
+          SONAR_TOKEN=$(curl -s -u admin:admin -X POST "http://localhost:9000/api/user_tokens/generate?name=ci-token" | jq -r '.token')
+          echo "Generated SONAR_TOKEN: $SONAR_TOKEN"
+          echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
+      - name: Run SonarScanner for ToolsHW
+        run: |
+          STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
+          if [[ "$STATUS" != "UP" ]]; then
+            echo "SonarQube is not ready, exiting..."
+            exit 1
+          fi
+          echo "Running SonarScanner..."
+          docker-compose -f ToolsHW/docker-compose.yml up sonar-scanner
+      - name: Wait for SonarQube to finish analysis
+        run: |
+          echo "Waiting for SonarQube analysis to complete..."
+          for i in {1..30}; do
+            RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/qualitygates/project_status?projectKey=toolshw")
+            echo "Response: $RESPONSE"
+            STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status')
+            if [[ "$STATUS" == "OK" || "$STATUS" == "WARN" || "$STATUS" == "ERROR" ]]; then
+              echo "SonarQube analysis finished with status: $STATUS"
+              exit 0
+            fi
+            echo "SonarQube analysis is still running... waiting 30 seconds"
+            sleep 10
+          done
+      - name: Check SonarQube Quality Gate and Ratings
+        id: toolshw
+        run: |
+          SCORE=4
+          QUALITY_GATE=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/qualitygates/project_status?projectKey=toolshw")
+          RATINGS=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/measures/component?component=toolshw&metricKeys=reliability_rating,security_rating,security_review_rating,sqale_rating")
+          
+          RELIABILITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="reliability_rating") | .value')
+          SECURITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="security_rating") | .value')
+          SECURITY_REVIEW=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="security_review_rating") | .value')
+          MAINTAINABILITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="sqale_rating") | .value')
+          echo "$QUALITY_GATE"
+          echo "Reliability Rating: $RELIABILITY"
+          echo "Security Rating: $SECURITY"
+          echo "Security Review Rating: $SECURITY_REVIEW"
+          echo "Maintainability Rating: $MAINTAINABILITY"
+          EXTRA_SCORE=0
+          for RATING in "$RELIABILITY" "$SECURITY" "$SECURITY_REVIEW" "$MAINTAINABILITY"; do
+            if [[ "$RATING" == "1.0" ]]; then
+              EXTRA_SCORE=$((EXTRA_SCORE + 1))
+            fi
+          done
+          SCORE=$((SCORE + EXTRA_SCORE))
+          echo "ToolsHW final score: $SCORE"
+          echo "tools_score=$SCORE" >> "$GITHUB_OUTPUT"
+  check-unittesthw:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    continue-on-error: true
+    outputs:
+      unittests_score: ${{ steps.assign_score.outputs.unittests_score }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pytest
+      - name: Run FizzBuzz Basic Tests
+        id: fizzbuzz_basic
+        continue-on-error: true
+        run: |
+          FIZZBUZZ_BASIC_RESULT=$(pytest "UnitTestHW/Fizz Buzz/Basic/test_fizzbuzz.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$FIZZBUZZ_BASIC_RESULT"
+          echo "::set-output name=score::$(if [[ "$FIZZBUZZ_BASIC_RESULT" == *"1 failed, 3 passed"* ]]; then echo 2; else echo 0; fi)" 
+      - name: Run FizzBuzz Class Tests
+        id: fizzbuzz_class
+        continue-on-error: true
+        run: |
+          FIZZBUZZ_CLASS_RESULT=$(pytest "UnitTestHW/Fizz Buzz/Class/test_fizzbuzz.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$FIZZBUZZ_CLASS_RESULT"
+          echo "::set-output name=score::$(if [[ "$FIZZBUZZ_CLASS_RESULT" == *"2 failed, 5 passed"* ]]; then echo 2; else echo 0; fi)" 
+      - name: Run Regular Expression Matching Tests
+        id: regex_matching
+        continue-on-error: true
+        run: |
+          REGEXMATCHING_RESULT=$(pytest "UnitTestHW/Regular Expression Matching/test_solution.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$REGEXMATCHING_RESULT"
+          echo "::set-output name=score::$(if [[ "$REGEXMATCHING_RESULT" == *"6 passed, 1 xfailed"* ]]; then echo 4; else echo 0; fi)" 
+      - name: Assign Unit Test score
+        id: assign_score
+        run: |
+          FIZZBUZZ_BASIC_SCORE="${{ steps.fizzbuzz_basic.outputs.score }}"
+          FIZZBUZZ_CLASS_SCORE="${{ steps.fizzbuzz_class.outputs.score }}"
+          REGEXMATCHING_SCORE="${{ steps.regex_matching.outputs.score }}"
+          
+          TOTAL=$((FIZZBUZZ_BASIC_SCORE + FIZZBUZZ_CLASS_SCORE + REGEXMATCHING_SCORE))
+          echo "unittests_score=$TOTAL" >> "$GITHUB_OUTPUT"
+  check-commit-message:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-classroom[bot]'
+    outputs:
+      commit_message_score: ${{ steps.calculate_accuracy.outputs.commit_message_score }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get all commit messages
+        run: |
+          COMMITS=$(git log --pretty=format:"%s")
+          echo "COMMITS<<EOF" >> $GITHUB_ENV
+          echo "$COMMITS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+      - name: Validate commit messages and calculate accuracy
+        id: calculate_accuracy
+        shell: bash
+        run: |
+          echo "Checking commit messages..."
+          TOTAL=0
+          CORRECT=0
+          while IFS= read -r line; do
+            if [[ -n "$line" ]]; then
+              TOTAL=$((TOTAL + 1))
+              if echo "$line" | grep -P -q "^(feat|fix|docs|style|refactor|perf|test|chore|revert):(?:\s\([a-zA-Z0-9_-]+\):)?\s[^\n]+$"; then
+                CORRECT=$((CORRECT + 1))
+              else
+                echo "Incorrect commit message: $line"
+              fi
+            fi
+          done <<< "$COMMITS"
+          
+          if [[ $TOTAL -gt 0 ]]; then
+            ACCURACY=$((100 * CORRECT / TOTAL))
+            echo "Commit message accuracy: $ACCURACY% ($CORRECT/$TOTAL correct)"
+          else
+            echo "No commit messages found to check."
+          fi
+          
+          if [[ $ACCURACY -ge 90 ]]; then
+            echo "commit_message_score=3" >> "$GITHUB_OUTPUT"
+          fi
+  check-darkmaze-dockerhw:
+    runs-on: ubuntu-latest
+    needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
+    continue-on-error: true
+    outputs:
+      darkmaze_docker_score: ${{ steps.DarkMaze-docker.outputs.darkmaze_docker_score }}
+    steps:
+      - name: Check eligibility
+        env:
+          GIT_SCORE: ${{ needs.check-githw.outputs.git_score }}
+          DOCKER_SCORE: ${{ needs.check-dockerhw.outputs.docker_score }}
+          CLEAN_CODE_SCORE: ${{ needs.check-cleancodehw.outputs.cleancode_score }}
+          UNITTESTS_SCORE: ${{ needs.check-unittesthw.outputs.unittests_score }}
+          TOOLS_SCORE: ${{ needs.check-toolshw.outputs.tools_score}}
+        run: |
+          : "${GIT_SCORE:=0}"
+          : "${DOCKER_SCORE:=0}"
+          : "${CLEAN_CODE_SCORE:=0}"
+          : "${TOOLS_SCORE:=0}"
+          : "${UNITTESTS_SCORE:=0}"
+          FIRST_PART_TOTAL=$((GIT_SCORE + DOCKER_SCORE + CLEAN_CODE_SCORE + UNITTESTS_SCORE + TOOLS_SCORE))
+          if [ "$FIRST_PART_TOTAL" -ne 40 ]; then
+            echo "Not yet passed the first part."
+            exit 1
+          fi
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Hadolint (check Dockerfile)
+        run: |
+          wget -O hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          chmod +x hadolint
+          ./hadolint DarkMaze/frontend/Dockerfile || true
+          ./hadolint DarkMaze/backend/Dockerfile || true
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+      - name: Check docker-compose.yml
+        run: docker-compose -f DarkMaze/docker-compose.yml config || true
+
+      - name: Build Docker image
+        run: docker-compose -f DarkMaze/docker-compose.yml build || true
+
+      - name: Start Docker containers
+        run: docker-compose -f DarkMaze/docker-compose.yml up -d || true
+
+      - name: Verify frontend service on port 8088
+        id: healthcheck_frontend
+        run: |
+          for i in {1..10}; do
+            if curl -s http://localhost:8088 > /dev/null; then
+              echo "healthy=true" >> $GITHUB_ENV
+              echo "::set-output name=healthy::true"
+              exit 0
+            fi
+            echo "Waiting for frontend on port 8088..."
+            sleep 1
+          done
+          echo "healthy=false" >> $GITHUB_ENV
+          echo "::set-output name=healthy::false"
+      - name: Verify backend service on port 8000
+        id: healthcheck_backend
+        run: |
+          for i in {1..10}; do
+            if curl -s http://localhost:8000 > /dev/null; then
+              echo "healthy=true" >> $GITHUB_ENV
+              echo "::set-output name=healthy::true"
+              exit 0
+            fi
+            echo "Waiting for backend on port 8000..."
+            sleep 1
+          done
+          echo "healthy=false" >> $GITHUB_ENV
+          echo "::set-output name=healthy::false"
+      - name: Stop Docker containers
+        run: docker-compose -f DarkMaze/docker-compose.yml down || true
+
+      - name: Assign DarkMaze Docker score
+        id: DarkMaze-docker
+        run: |
+          FRONTEND_HEALTHY=${{ steps.healthcheck_frontend.outputs.healthy }}
+          BACKEND_HEALTHY=${{ steps.healthcheck_backend.outputs.healthy }}
+          echo "Frontend status: $FRONTEND_HEALTHY"
+          echo "Backend status: $BACKEND_HEALTHY"
+          if [[ "$FRONTEND_HEALTHY" == "true" && "$BACKEND_HEALTHY" == "true" ]]; then
+            echo "darkmaze_docker_score=15" >> $GITHUB_ENV
+            echo "darkmaze_docker_score=15" >> $GITHUB_OUTPUT
+          else
+            echo "darkmaze_docker_score=0" >> $GITHUB_ENV
+            echo "darkmaze_docker_score=0" >> $GITHUB_OUTPUT
+          fi
+  check-darkmaze-tools:
+    runs-on: ubuntu-latest
+    needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
+    continue-on-error: true
+    outputs:
+      darkmaze_tools_score: ${{ steps.darkmaze_tools_check.outputs.darkmaze_tools_score }}
+    steps:
+      - name: Check eligibility
+        env:
+          GIT_SCORE: ${{ needs.check-githw.outputs.git_score }}
+          DOCKER_SCORE: ${{ needs.check-dockerhw.outputs.docker_score }}
+          CLEAN_CODE_SCORE: ${{ needs.check-cleancodehw.outputs.cleancode_score }}
+          UNITTESTS_SCORE: ${{ needs.check-unittesthw.outputs.unittests_score }}
+          TOOLS_SCORE: ${{ needs.check-toolshw.outputs.tools_score}}
+        run: |
+          : "${GIT_SCORE:=0}"
+          : "${DOCKER_SCORE:=0}"
+          : "${CLEAN_CODE_SCORE:=0}"
+          : "${TOOLS_SCORE:=0}"
+          : "${UNITTESTS_SCORE:=0}"
+          FIRST_PART_TOTAL=$((GIT_SCORE + DOCKER_SCORE + CLEAN_CODE_SCORE + UNITTESTS_SCORE + TOOLS_SCORE))
+          if [ "$FIRST_PART_TOTAL" -ne 40 ]; then
+            echo "Not yet passed the first part."
+            exit 1
+          fi
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y docker-compose
+      - name: Start SonarQube Service for DarkMaze
+        working-directory: DarkMaze
+        run: |
+          docker-compose up -d sonarqube
+          docker update --memory=4g --memory-swap=4g sonarqube
+          sleep 30
+          docker exec --user root sonarqube bash -c 'rm -f $SONARQUBE_HOME/lib/extensions/sonar-python-plugin-*.jar'
+          docker exec sonarqube bash -c 'wget https://binaries.sonarsource.com/Distribution/sonar-python-plugin/sonar-python-plugin-4.9.0.13528.jar -P "$SONARQUBE_HOME"/extensions/plugins/'
+          docker restart sonarqube
+      - name: Wait for SonarQube to be Ready
+        run: |
+          echo "Waiting for SonarQube to start..."
+          for i in {1..30}; do
+            STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
+            if [[ "$STATUS" == "UP" ]]; then
+              echo "SonarQube is fully ready!"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "SonarQube failed to start properly"
+          exit 1
+      - name: Generate SonarQube Token
+        id: generate_token_darkmaze
+        run: |
+          SONAR_TOKEN=$(curl -s -u admin:admin -X POST "http://localhost:9000/api/user_tokens/generate?name=ci-token-darkmaze" | jq -r '.token')
+          echo "Generated SONAR_TOKEN: $SONAR_TOKEN"
+          echo "SONAR_TOKEN=$SONAR_TOKEN" >> $GITHUB_ENV
+      - name: Run SonarScanner for DarkMaze
+        working-directory: DarkMaze/backend
+        run: |
+          echo "Running Pylint and Flake8 before SonarQube analysis..."
+          
+          docker run --rm -v $PWD:/app -w /app python:3.11 bash -c "
+            pip install pylint flake8 &&
+            mkdir reports &&
+            pylint --output-format=json **/*.py > reports/pylint-report.json || true &&
+            flake8 --format=json > reports/flake8-report.json || true
+          "
+          docker-compose up -d sonar-scanner
+          
+          STATUS=$(curl -s http://localhost:9000/api/system/status | jq -r '.status')
+          if [[ "$STATUS" != "UP" ]]; then
+            echo "SonarQube is not ready, exiting..."
+            exit 1
+          fi
+          export PYLINT_REPORT=$(cat $PWD/reports/pylint-report.json)
+          export FLAKE8_REPORT=$(cat $PWD/reports/flake8-report.json)
+          
+          echo "Running SonarScanner for DarkMaze Backend..."
+          docker-compose up sonar-scanner
+          echo "SonarQube status: $STATUS, still waiting..."
+          echo "----- SonarQube Logs (last 50 lines) -----"
+          docker logs sonarqube --tail 50
+          echo "------------------------------------------"
+      - name: Ensure StrictQualityGate Exists
+        run: |
+          curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/create?name=StrictQualityGate" || true
+          curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/set_default?name=StrictQualityGate" || true
+          curl -u "$SONAR_TOKEN:" -X POST "http://localhost:9000/api/qualitygates/select?project=DarkMaze&gateName=StrictQualityGate" || true
+      - name: Wait for SonarQube Analysis to Complete
+        run: |
+          echo "Waiting for SonarQube analysis to complete..."
+          for i in {1..30}; do
+            RESPONSE=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/qualitygates/project_status?projectKey=DarkMaze")
+            echo "Response: $RESPONSE"
+            STATUS=$(echo "$RESPONSE" | jq -r '.projectStatus.status')
+            if [[ "$STATUS" == "OK" || "$STATUS" == "WARN" || "$STATUS" == "ERROR" ]]; then
+              echo "SonarQube analysis finished with status: $STATUS"
+              exit 0
+            fi
+            echo "SonarQube analysis still in progress... waiting 10 seconds"
+            sleep 10
+          done
+          echo "SonarQube analysis did not finish in time."
+          exit 1
+      - name: Check SonarQube Quality Gate and Ratings for DarkMaze Tools
+        id: darkmaze_tools_check
+        run: |
+          SCORE=0  
+          RATINGS=$(curl -s -u "$SONAR_TOKEN:" "http://localhost:9000/api/measures/component?component=DarkMaze&metricKeys=reliability_rating,security_rating,security_review_rating,sqale_rating,bugs,vulnerabilities,code_smells,duplicated_lines_density")
+      
+          RELIABILITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="reliability_rating") | .value')
+          SECURITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="security_rating") | .value')
+          SECURITY_REVIEW=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="security_review_rating") | .value')
+          MAINTAINABILITY=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="sqale_rating") | .value')
+      
+          BUGS=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="bugs") | .value')
+          VULNERABILITIES=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="vulnerabilities") | .value')
+          CODE_SMELLS=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="code_smells") | .value')
+          DUPLICATED_LINES=$(echo "$RATINGS" | jq -r '.component.measures[] | select(.metric=="duplicated_lines_density") | .value')
+      
+          echo "============================"
+          echo "🔍 SonarQube Rating Report："
+          echo "----------------------------"
+          echo "🛠  Reliability Rating: $RELIABILITY"
+          echo "🛡  Security Rating: $SECURITY"
+          echo "🔍  Security Review Rating: $SECURITY_REVIEW"
+          echo "🔧  Maintainability Rating: $MAINTAINABILITY"
+          echo "🐛  Bugs: $BUGS"
+          echo "🚨  Vulnerabilities: $VULNERABILITIES"
+          echo "🌀  Code Smells: $CODE_SMELLS"
+          echo "📑  Duplicated Lines Density: $DUPLICATED_LINES%"
+          echo "============================"
+      
+          for RATING in "$RELIABILITY" "$SECURITY" "$SECURITY_REVIEW" "$MAINTAINABILITY"; do
+            if [[ "$RATING" == "1.0" ]]; then
+              SCORE=$((SCORE + 6))  
+            elif [[ "$RATING" == "2.0" ]]; then
+              SCORE=$((SCORE + 4)) 
+            elif [[ "$RATING" == "3.0" ]]; then
+              SCORE=$((SCORE + 2))  
+            fi  
+          done
+      
+          echo "✅ DarkMaze Tools Final Score: $SCORE"
+          echo "darkmaze_tools_score=$SCORE" >> "$GITHUB_OUTPUT"
+      
+          echo "============================"
+          echo "⚠️  Your Problem："
+          [[ "$BUGS" -gt 0 ]] && echo "❌ Found $BUGS bugs. Please check your code for errors!"
+          [[ "$VULNERABILITIES" -gt 0 ]] && echo "❌ Found $VULNERABILITIES security vulnerabilities. Please fix them!"
+          [[ "$CODE_SMELLS" -gt 0 ]] && echo "⚠️  Detected $CODE_SMELLS code smells. Consider improving readability!"
+          [[ "$DUPLICATED_LINES" -gt 10 ]] && echo "⚠️  High code duplication ($DUPLICATED_LINES%). Consider refactoring!"
+          echo "============================"
+        
+      - name: Stop DarkMaze Backend Containers
+        working-directory: DarkMaze/backend
+        run: |
+          docker-compose down
+        
+  check-darkmaze-testinghw:
+    runs-on: ubuntu-latest
+    needs: [check-githw, check-dockerhw, check-cleancodehw, check-unittesthw, check-toolshw]
+    continue-on-error: true
+    outputs:
+      darkmaze_testing_score: ${{ steps.assign_darkmaze_score.outputs.darkmaze_testing_score }}
+    steps:
+      - name: Check eligibility
+        env:
+          GIT_SCORE: ${{ needs.check-githw.outputs.git_score }}
+          DOCKER_SCORE: ${{ needs.check-dockerhw.outputs.docker_score }}
+          CLEAN_CODE_SCORE: ${{ needs.check-cleancodehw.outputs.cleancode_score }}
+          UNITTESTS_SCORE: ${{ needs.check-unittesthw.outputs.unittests_score }}
+          TOOLS_SCORE: ${{ needs.check-toolshw.outputs.tools_score}}
+        run: |
+          : "${GIT_SCORE:=0}"
+          : "${DOCKER_SCORE:=0}"
+          : "${CLEAN_CODE_SCORE:=0}"
+          : "${TOOLS_SCORE:=0}"
+          : "${UNITTESTS_SCORE:=0}"
+          
+          FIRST_PART_TOTAL=$((GIT_SCORE + DOCKER_SCORE + CLEAN_CODE_SCORE + UNITTESTS_SCORE + TOOLS_SCORE))
+          if [ "$FIRST_PART_TOTAL" -ne 40 ]; then
+            echo "Not yet passed the first part."
+            exit 1
+          fi
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install pytest pytest-asyncio httpx fastapi numpy uvicorn
+      - name: Run game over code
+        id: game_over
+        continue-on-error: true
+        run: |
+          # Get correct judge
+          cp -f DarkMaze/backend/src/game/judge.py DarkMaze/backend/tests/judge_code.py
+          OK_GAME_OVER_RESULT=$(pytest "DarkMaze/backend/tests/test_game_over.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$OK_GAME_OVER_RESULT"
+          # Get only win
+          cp -f .github/bad_game_overs/only_win.py DarkMaze/backend/tests/judge_code.py
+          ONLY_WIN_GAME_OVER_RESULT=$(pytest "DarkMaze/backend/tests/test_game_over.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$ONLY_WIN_GAME_OVER_RESULT"
+          # Get const
+          cp -f .github/bad_game_overs/const.py DarkMaze/backend/tests/judge_code.py
+          CONST_GAME_OVER_RESULT=$(pytest "DarkMaze/backend/tests/test_game_over.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$CONST_GAME_OVER_RESULT"
+          echo "::set-output name=score::$(if [[ "$OK_GAME_OVER_RESULT" != *"failed"* && "$ONLY_WIN_GAME_OVER_RESULT" == *"failed"* && "$CONST_GAME_OVER_RESULT" == *"failed"* ]]; then echo 6; else echo 0; fi)"
+      - name: Run solve maze with no backend
+        id: no_backend
+        continue-on-error: true
+        run: |
+          NO_BACKEND_RESULT=$(pytest "DarkMaze/backend/tests/test_solve_maze.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$NO_BACKEND_RESULT"
+          echo "::set-output name=score::$(if [[ "$NO_BACKEND_RESULT" == *"2 failed"* ]]; then echo 4; else echo 0; fi)"
+      - name: Run solve maze with mock backend
+        id: mock_backend
+        continue-on-error: true
+        run: |
+          cd .github
+          nohup python mock_backend.py &
+          sleep 3
+          cd ..
+          MOCK_BACKEND_RESULT=$(pytest "DarkMaze/backend/tests/test_solve_maze.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$MOCK_BACKEND_RESULT"
+          echo "::set-output name=score::$(if [[ "$MOCK_BACKEND_RESULT" == *"1 failed, 1 passed"* ]]; then echo 4; else echo 0; fi)"
+          pkill -f "python mock_backend.py"
+      - name: Run true backend
+        run: |
+          cd DarkMaze/backend
+          nohup python -m src.main &
+          sleep 3
+      - name: Run solve maze
+        id: solve_maze
+        continue-on-error: true
+        run: |
+          SOLVE_MAZE_RESULT=$(pytest "DarkMaze/backend/tests/test_solve_maze.py" --maxfail=10 --disable-warnings -q|| true)
+          echo "$SOLVE_MAZE_RESULT"
+          echo "::set-output name=score::$(if [[ "$SOLVE_MAZE_RESULT" == *"2 passed"* ]]; then echo 4; else echo 0; fi)"
+      - name: Stop backend
+        run: pkill -f "python -m src.main"
+
+      - name: Assign Dark Maze Test score
+        id: assign_darkmaze_score
+        run: |
+          GAME_OVER_SCORE="${{ steps.game_over.outputs.score }}"
+          NO_BACKEND_SCORE="${{ steps.no_backend.outputs.score }}"
+          MOCK_BACKEND_SCORE="${{ steps.mock_backend.outputs.score }}"
+          SOLVE_MAZE_SCORE="${{ steps.solve_maze.outputs.score }}"
+          
+          TOTAL=$((GAME_OVER_SCORE + NO_BACKEND_SCORE + MOCK_BACKEND_SCORE + SOLVE_MAZE_SCORE))
+          echo "darkmaze_testing_score=$TOTAL" >> "$GITHUB_OUTPUT"
+  calculate-score:
+    runs-on: ubuntu-latest
+    needs: [check-githw, check-dockerhw, check-cleancodehw, check-toolshw, check-unittesthw, check-commit-message, check-darkmaze-testinghw, check-darkmaze-dockerhw, check-darkmaze-tools]
+    permissions: write-all
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Calculate total score
+        env:
+          GIT_SCORE: ${{ needs.check-githw.outputs.git_score }}
+          DARKMAZE_TESTING_SCORE: ${{ needs.check-darkmaze-testinghw.outputs.darkmaze_testing_score }}
+          DARKMAZE_DOCKER_SCORE: ${{ needs.check-darkmaze-dockerhw.outputs.darkmaze_docker_score }}
+          DOCKER_SCORE: ${{ needs.check-dockerhw.outputs.docker_score }}
+          CLEAN_CODE_SCORE: ${{ needs.check-cleancodehw.outputs.cleancode_score }}
+          UNITTESTS_SCORE: ${{ needs.check-unittesthw.outputs.unittests_score }}
+          TOOLS_SCORE: ${{ needs.check-toolshw.outputs.tools_score }}
+          DARKMAZE_TOOLS_SCORE: ${{ needs.check-darkmaze-tools.outputs.darkmaze_tools_score }}
+          COMMIT_MESSAGE_SCORE: ${{ needs.check-commit-message.outputs.commit_message_score }}
+          STUDENT_ID: ${{ needs.check-githw.outputs.student_id }}
+        run: |
+          : "${GIT_SCORE:=0}"
+          : "${DARKMAZE_TESTING_SCORE:=0}"
+          : "${DARKMAZE_DOCKER_SCORE:=0}"
+          : "${DOCKER_SCORE:=0}"
+          : "${CLEAN_CODE_SCORE:=0}"
+          : "${UNITTESTS_SCORE:=0}"
+          : "${TOOLS_SCORE:=0}"
+          : "${DARKMAZE_TOOLS_SCORE:=0}"
+          : "${COMMIT_MESSAGE_SCORE:=0}"
+          : "${STUDENT_ID:=Unknown}"
+          TOTAL=$((GIT_SCORE + DARKMAZE_TESTING_SCORE + DARKMAZE_DOCKER_SCORE + DOCKER_SCORE + CLEAN_CODE_SCORE + UNITTESTS_SCORE + TOOLS_SCORE + DARKMAZE_TOOLS_SCORE + COMMIT_MESSAGE_SCORE))
+          echo "Final Score: $TOTAL"
+          echo "Student ID: $STUDENT_ID"
+          
+      - name: Score report
+        id: score_report
+        env:
+          GIT_SCORE: ${{ needs.check-githw.outputs.git_score }}
+          DARKMAZE_TESTING_SCORE: ${{ needs.check-darkmaze-testinghw.outputs.darkmaze_testing_score }}
+          DARKMAZE_DOCKER_SCORE: ${{ needs.check-darkmaze-dockerhw.outputs.darkmaze_docker_score }}
+          DOCKER_SCORE: ${{ needs.check-dockerhw.outputs.docker_score }}
+          CLEAN_CODE_SCORE: ${{ needs.check-cleancodehw.outputs.cleancode_score }}
+          UNITTESTS_SCORE: ${{ needs.check-unittesthw.outputs.unittests_score }}
+          TOOLS_SCORE: ${{ needs.check-toolshw.outputs.tools_score }}
+          DARKMAZE_TOOLS_SCORE: ${{ needs.check-darkmaze-tools.outputs.darkmaze_tools_score }}
+          COMMIT_MESSAGE_SCORE: ${{ needs.check-commit-message.outputs.commit_message_score }}
+          STUDENT_ID: ${{ needs.check-githw.outputs.student_id }}
+        run: |
+          GIT_SCORE=${GIT_SCORE:-0}
+          DARKMAZE_TESTING_SCORE=${DARKMAZE_TESTING_SCORE:-0}
+          DARKMAZE_DOCKER_SCORE=${DARKMAZE_DOCKER_SCORE:-0}
+          DOCKER_SCORE=${DOCKER_SCORE:-0}
+          CLEAN_CODE_SCORE=${CLEAN_CODE_SCORE:-0}
+          UNITTESTS_SCORE=${UNITTESTS_SCORE:-0}
+          TOOLS_SCORE=${TOOLS_SCORE:-0}
+          DARKMAZE_TOOLS_SCORE=${DARKMAZE_TOOLS_SCORE:-0}
+          COMMIT_MESSAGE_SCORE=${COMMIT_MESSAGE_SCORE:-0}
+          STUDENT_ID=${STUDENT_ID:-Unknown}
+  
+          MAX_GIT_SCORE=8
+          MAX_DOCKER_SCORE=8
+          MAX_CLEAN_CODE_SCORE=8
+          MAX_UNITTESTS_SCORE=8
+          MAX_DARKMAZE_DOCKER_SCORE=15
+          MAX_DARKMAZE_TESTING_SCORE=18
+          MAX_TOOLSHW_SCORE=8
+          MAX_DARKMAZE_TOOLS_SCORE=24
+          MAX_COMMIT_MESSAGE_SCORE=3
+        
+          TOTAL=$((GIT_SCORE + DARKMAZE_TESTING_SCORE + DARKMAZE_DOCKER_SCORE + DOCKER_SCORE + CLEAN_CODE_SCORE + UNITTESTS_SCORE + TOOLS_SCORE + DARKMAZE_TOOLS_SCORE + COMMIT_MESSAGE_SCORE))
+          MAX_TOTAL=$((MAX_GIT_SCORE + MAX_DARKMAZE_TESTING_SCORE + MAX_DARKMAZE_DOCKER_SCORE + MAX_DOCKER_SCORE + MAX_CLEAN_CODE_SCORE + MAX_UNITTESTS_SCORE + MAX_TOOLSHW_SCORE + MAX_DARKMAZE_TOOLS_SCORE + MAX_COMMIT_MESSAGE_SCORE))
+          
+          echo "## Score Report" >> $GITHUB_STEP_SUMMARY
+          echo "### Total Score: $TOTAL/$MAX_TOTAL" >> $GITHUB_STEP_SUMMARY
+          echo "#### Detailed List" >> $GITHUB_STEP_SUMMARY
+          echo "| Subject | Score |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| Git | $GIT_SCORE / $MAX_GIT_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker | $DOCKER_SCORE / $MAX_DOCKER_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Clean Code | $CLEAN_CODE_SCORE / $MAX_CLEAN_CODE_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tools | $TOOLS_SCORE / $MAX_TOOLSHW_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | $UNITTESTS_SCORE / $MAX_UNITTESTS_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| -------------------------------- | -------------------------------- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Commit message | $COMMIT_MESSAGE_SCORE / $MAX_COMMIT_MESSAGE_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| -------------------------------- | -------------------------------- |" >> $GITHUB_STEP_SUMMARY
+          echo "| DarkMaze Docker | $DARKMAZE_DOCKER_SCORE / $MAX_DARKMAZE_DOCKER_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| DarkMaze Tools | $DARKMAZE_TOOLS_SCORE / $MAX_DARKMAZE_TOOLS_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "| DarkMaze Testing | $DARKMAZE_TESTING_SCORE / $MAX_DARKMAZE_TESTING_SCORE |" >> $GITHUB_STEP_SUMMARY
+          echo "total_score=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "max_total_score=$MAX_TOTAL" >> "$GITHUB_OUTPUT"
+          
+      - uses: actions/github-script@v6
+        id: my-script
+        env:
+          TOTAL: ${{ steps.score_report.outputs.total_score }}
+          MAX_TOTAL: ${{ steps.score_report.outputs.max_total_score }}
+        with:
+          retries: 3
+          retry-exempt-status-codes: 400,401
+          script: |
+              const fs = require("fs");
+              const path = require("path");
+              const total = process.env.TOTAL;
+              const maxScore = process.env.MAX_TOTAL;
+              const text = `Points ${total}/${maxScore}`;
+              const summary = JSON.stringify({ total, maxScore })
+              const classroomReport = {
+                tests: [
+                {
+                  name: "Final Score",
+                  max_score: maxScore,
+                  score: total,
+                  output: `Score: ${total}/${maxScore}`
+                }
+              ]};
+              // Ensure directory exists
+              const dirPath = path.join(".github", "classroom");
+              if (!fs.existsSync(dirPath)) {
+                fs.mkdirSync(dirPath, { recursive: true });
+              }
+              // Write autograding result
+              const jsonPath = path.join(dirPath, "autograding.json");
+              await fs.promises.writeFile(jsonPath, JSON.stringify(classroomReport, null, 2));
+                // create notice annotations with the final result and summary
+              core.notice(text, {
+                title: "Autograding complete",
+              })
+              core.notice(summary, {
+                title: "Autograding report",
+              })
+      - name: Upload Autograding JSON
+        uses: actions/upload-artifact@v4
+        with:
+          name: autograding-results
+          path: .github/classroom/autograding.json
+
+      - name: Upload to Classroom UI
+        env:
+          TOTAL: ${{ steps.score_report.outputs.total_score }}
+          MAX_TOTAL: ${{ steps.score_report.outputs.max_total_score }}
+#       run: echo "points=7" >> "$GITHUB_OUTPUT" ; echo "total-points=9" >> "$GITHUB_OUTPUT"
+        uses: markpatterson27/autograding@dev-points-input-release
+        with:
+          points: ${{ steps.score_report.outputs.total_score }}
+          available-points: ${{ steps.score_report.outputs.max_total_score}}
