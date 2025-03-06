@@ -3,7 +3,7 @@ import httpx
 
 USERNAME = "TestUser"
 RESET_URL = f"http://127.0.0.1:8000/api/v1/reset?username={USERNAME}"
-LOGIN_URL = f"http://127.0.0.1:8000/api/v1/login"
+LOGIN_URL = "http://127.0.0.1:8000/api/v1/login"
 MOVE_URL = "http://127.0.0.1:8000/api/v1/move"
 game_state = {}
 
@@ -47,7 +47,7 @@ async def test_integration():
     #print(game_state)
     await reset_request()
     #print(game_state)
-    for i in range(5):
+    for _ in range(5):
         await move_request("down")
         #print(game_state)
     assert game_state["current_position"] == [1,5]

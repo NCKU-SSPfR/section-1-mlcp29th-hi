@@ -31,7 +31,7 @@ def move_location(game_state: dict, direction: str) -> dict:
     if not is_within_bounds(new_position, width, height):
         return game_state  # Out of bounds, no movement
 
-    if hit_obstacle(new_position, game_state["current_level_name"]):
+    if hit_obstacle(tuple(new_position), game_state["current_level_name"]):
         game_state["health"] -= 1  # Reduce health on obstacle hit
     else:
         update_player_position(game_state, new_position)
